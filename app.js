@@ -2,17 +2,17 @@ var vertexShaderText =
 [
 'precision mediump float;',
 '',
-'attribute vec2 vertPosition;',
+'attribute vec3 vertPosition;',
 'attribute vec3 vertColor;',
 'varying vec3 fragColor;',
-'unifrom mat4 mWorld',
-'unifrom mat4 mView',
-'unifrom mat4 mProj',
+'uniform mat4 mWorld;',
+'uniform mat4 mView;',
+'uniform mat4 mProj;',
 '',
 'void main()',
 '{',
 '	fragColor = vertColor;',
-'	gl_Position = mProj * mView * mWorld * vec4(vertPosition, 0.0, 1.0);',
+'	gl_Position = mProj * mView * mWorld * vec4(vertPosition, 1.0);',
 '}'
 ].join('\n');
 
@@ -86,10 +86,10 @@ var InitDemo = function() {
 	// Create buffer
 	//
 	var triangleVertices = 
-	[ // X, Y          R, G, B
-		0.0, 0.5,      1.0, 1.1, 0.0,
-		-0.5, -0.5,    0.7, 0.0, 1.0,
-		0.5, -0.5,     0.1, 1.0, 0.6      
+	[ // X, Y, Z         R, G, B
+		0.0, 0.5, 0.0,     1.0, 1.1, 0.0,
+		-0.5, -0.5, 0.0,    0.7, 0.0, 1.0,
+		0.5, -0.5, 0.0,     0.1, 1.0, 0.6      
 	];
 
 	var triangleVerticesBufferObject = gl.createBuffer();
@@ -100,10 +100,10 @@ var InitDemo = function() {
 	var colorAttribLocation = gl.getAttribLocation(program, 'vertColor');
 	gl.vertexAttribPointer(
 		positionAttribLocation,  //Attribute location
-		2, //Number of elements per attribute
+		3, //Number of elements per attribute
 		gl.FLOAT,	//Type of elements
 		gl.FALSE,
-		5 * Float32Array.BYTES_PER_ELEMENT,  //size of an individual vertex
+		6 * Float32Array.BYTES_PER_ELEMENT,  //size of an individual vertex
 		0	// Offset from the beginning of a single vertex to this attribute
 		);
 	gl.vertexAttribPointer(
@@ -111,16 +111,50 @@ var InitDemo = function() {
 		3, //Number of elements per attribute
 		gl.FLOAT,	//Type of elements
 		gl.FALSE,
-		5 * Float32Array.BYTES_PER_ELEMENT,  //size of an individual vertex
-		2 *	Float32Array.BYTES_PER_ELEMENT// Offset from the beginning of a single vertex to this attribute
+		6 * Float32Array.BYTES_PER_ELEMENT,  //size of an individual vertex
+		3 *	Float32Array.BYTES_PER_ELEMENT// Offset from the beginning of a single vertex to this attribute
 		);
 
 	gl.enableVertexAttribArray(positionAttribLocation);
 	gl.enableVertexAttribArray(colorAttribLocation);
-    
-	//render loop
+
 	gl.useProgram(program);
-	gl.drawArrays(gl.TRIANGLES, 0, 3);
+    
+    var matWorldUniformLocation = gl.getUniformLocation(program, 'mWorld');
+    var matViewUniformLocation = gl.getUniformLocation(program, 'mView');
+    var matProjUniformLocation = gl.getUniformLocation(program, 'mProj');
+
+    var projMatrix = new Float32Array(16);
+    var viewMatrix = new Float32Array(16);
+    var worldMatrix = new Float32Array(16);
+    mat4.identity(worldMatrix);
+    mat4.lookAt(viewMatrix,[0, 0, -2], [0, 0, 0], [0, 1, 0]);
+    mat4.perspective(projMatrix, glMatrix.toRadian(45), canvas.width / canvas.height, 0.1, 1000.0);
+
+    gl.uniformMatrix4fv(matWorldUniformLocation, gl.FALSE, worldMatrix);
+    gl.uniformMatrix4fv(matViewUniformLocation, gl.FALSE, viewMatrix);
+    gl.uniformMatrix4fv(matProjUniformLocation, gl.FALSE, projMatrix);
+
+
+	//render loop
+	var angle = 0;
+	var identityMatrix = new Float32Array(16);
+	mat4.identity(identityMatrix);
+	var loop = function() {
+		angle = performance.now() / 1000 / 6 * 2 * Math.PI;
+		mat4.rotate(worldMatrix, identityMatrix, angle, [0, 1, 0]);
+		gl.uniformMatrix4fv(matWorldUniformLocation, gl.FALSE, worldMatrix);
+		gl.clearColor(0.75, 0.85, 0.8, 1.0);
+
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+		requestAnimationFrame(loop);
+
+
+	};
+	requestAnimationFrame(loop);
+	
 
 
 	// canvas.width = window.innerWidth;
